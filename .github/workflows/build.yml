@@ -1,4 +1,4 @@
-name: Build iOS IPA
+name: Build Unsigned IPA
 
 on:
   workflow_dispatch:
@@ -11,34 +11,40 @@ jobs:
     runs-on: macos-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Select Xcode
-        run: sudo xcode-select -s /Applications/Xcode.app
-
-      - name: Build Archive
+      - name: Make temporary Xcode project
         run: |
+          mkdir temp_project
+          cd temp_project
+          xcodebuild -create-xcodeproj temp.xcodeproj
+          cd ..
+
+      - name: Copy Swift files
+        run: |
+          cp -R MusicPlayer/*.swift temp_project/
+
+      - name: Build unsigned IPA
+        run: |
+          cd temp_project
           xcodebuild \
-            -project MusicPlayer.xcodeproj \
-            -scheme MusicPlayer \
+            -project temp.xcodeproj \
+            -scheme temp \
             -configuration Release \
             -sdk iphoneos \
-            -archivePath $PWD/build/MusicPlayer.xcarchive \
+            -archivePath $PWD/build/temp.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             archive
-
-      - name: Export IPA
-        run: |
           xcodebuild -exportArchive \
-            -archivePath $PWD/build/MusicPlayer.xcarchive \
-            -exportOptionsPlist ExportOptions.plist \
+            -archivePath $PWD/build/temp.xcarchive \
+            -exportOptionsPlist ../ExportOptions.plist \
             -exportPath $PWD/build
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: ipa
-          path: build/*.ipa
+          path: temp_project/build/*.ipa
