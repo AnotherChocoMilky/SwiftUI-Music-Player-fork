@@ -1,88 +1,82 @@
 import SwiftUI
 import AVKit
+import UniformTypeIdentifiers
 
 struct ModernMusicPlayer: View {
     // MARK: - Properties
-    let audioFile = "piano"
-    
     @State private var player: AVAudioPlayer?
     @State private var isPlaying = false
     @State private var totalTime: TimeInterval = 0.0
     @State private var currentTime: TimeInterval = 0.0
-    @State private var isDragging = false
     
-    // Animation States
-    @State private var albumRotation: Double = 0
-    @State private var albumScale: CGFloat = 0.85
+    // File Selection States
+    @State private var isShowingPicker = false
+    @State private var selectedFileName: String = "No Track Selected"
+    @State private var selectedArtist: String = "Tap the '+' to upload"
     
     var body: some View {
         ZStack {
-            // Background Gradient
-            LinearGradient(colors: [Color(hex: "1a1a2e"), Color(hex: "0f0f1b")], startPoint: .topLeading, endPoint: .bottomTrailing)
+            // Background
+            LinearGradient(colors: [Color(hex: "0f0f1b"), Color(hex: "1a1a2e")], startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
             
-            // Animated Ambient Glow
-            GeometryReader { geo in
-                Circle()
-                    .fill(Color.purple.opacity(0.15))
-                    .frame(width: 300, height: 300)
-                    .blur(radius: 80)
-                    .offset(x: isPlaying ? 50 : -50, y: isPlaying ? 100 : 200)
-                    .animation(.easeInOut(duration: 5).repeatForever(autoreverses: true), value: isPlaying)
-            }
-            
             VStack(spacing: 25) {
-                // Header
+                // Header with Upload Button
                 HStack {
-                    GlassButton(icon: "chevron.down")
+                    GlassButton(icon: "music.note.list")
                     Spacer()
-                    Text("Now Playing")
-                        .font(.system(.subheadline, design: .rounded))
-                        .fontWeight(.bold)
+                    Text("My Library")
+                        .font(.system(.subheadline, design: .rounded)).bold()
                         .foregroundColor(.white.opacity(0.8))
                     Spacer()
-                    GlassButton(icon: "list.bullet")
+                    
+                    // THE UPLOAD BUTTON
+                    Button(action: { isShowingPicker = true }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 28))
+                            .foregroundStyle(.linearGradient(colors: [.purple, .blue], startPoint: .top, endPoint: .bottom))
+                    }
                 }
                 .padding(.horizontal)
                 
-                // Album Art Container
-                VStack {
+                // Album Art (Pulse Animation)
+                ZStack {
+                    Circle()
+                        .fill(Color.purple.opacity(0.15))
+                        .frame(width: 280, height: 280)
+                        .blur(radius: isPlaying ? 40 : 20)
+                        .scaleEffect(isPlaying ? 1.2 : 1.0)
+                    
+                    // If no file is picked, show a placeholder icon
                     ZStack {
-                        // Shadow Glow
-                        RoundedRectangle(cornerRadius: 24)
-                            .fill(Color.purple.opacity(0.3))
+                        RoundedRectangle(cornerRadius: 30, style: .continuous)
+                            .fill(.white.opacity(0.05))
                             .frame(width: 260, height: 260)
-                            .blur(radius: 40)
-                            .opacity(isPlaying ? 1 : 0)
+                            .overlay(RoundedRectangle(cornerRadius: 30).stroke(.white.opacity(0.1), lineWidth: 1))
                         
-                        Image("tree") // Ensure "tree" is in Assets
-                            .resizable()
-                            .aspectRatio(contentMode: .fill)
-                            .frame(width: 280, height: 280)
-                            .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
-                            )
-                            .scaleEffect(isPlaying ? 1.0 : 0.9)
+                        Image(systemName: "music.note")
+                            .font(.system(size: 80))
+                            .foregroundColor(.white.opacity(0.2))
                     }
                 }
-                .padding(.vertical, 30)
-                .animation(.spring(response: 0.6, dampingFraction: 0.6), value: isPlaying)
+                .padding(.vertical, 20)
+                .animation(.easeInOut(duration: 1).repeatForever(autoreverses: true), value: isPlaying)
                 
-                // Track Info
+                // Track Info (Updated by File Name)
                 VStack(spacing: 8) {
-                    Text("Drift")
-                        .font(.system(.title, design: .rounded))
+                    Text(selectedFileName)
+                        .font(.system(.title3, design: .rounded))
                         .fontWeight(.bold)
                         .foregroundColor(.white)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
                     
-                    Text("Robot Koch ft. nilu")
-                        .font(.system(.headline, design: .rounded))
+                    Text(selectedArtist)
+                        .font(.system(.subheadline, design: .rounded))
                         .foregroundColor(.white.opacity(0.6))
                 }
                 
-                // Slider & Time
+                // Slider
                 VStack(spacing: 12) {
                     CustomSlider(value: Binding(get: {
                         currentTime
@@ -101,74 +95,90 @@ struct ModernMusicPlayer: View {
                 }
                 .padding(.horizontal, 30)
                 
-                // Controls
-                HStack(spacing: 40) {
-                    Button(action: {}) {
-                        Image(systemName: "backward.fill")
-                            .font(.title2)
-                    }
+                // Main Controls
+                HStack(spacing: 50) {
+                    Image(systemName: "backward.fill").font(.title2)
                     
-                    // Main Play Button
                     Button(action: togglePlay) {
-                        ZStack {
-                            Circle()
-                                .fill(.white)
-                                .frame(width: 80, height: 80)
-                                .shadow(color: .white.opacity(0.2), radius: 20, x: 0, y: 10)
-                            
-                            Image(systemName: isPlaying ? "pause.fill" : "play.fill")
-                                .font(.title)
-                                .foregroundColor(.black)
-                                .offset(x: isPlaying ? 0 : 2)
-                        }
+                        Circle()
+                            .fill(.white)
+                            .frame(width: 70, height: 70)
+                            .overlay(
+                                Image(systemName: isPlaying ? "pause.fill" : "play.fill")
+                                    .foregroundColor(.black).font(.title)
+                            )
                     }
                     .buttonStyle(StaticButtonStyle())
                     
-                    Button(action: {}) {
-                        Image(systemName: "forward.fill")
-                            .font(.title2)
-                    }
+                    Image(systemName: "forward.fill").font(.title2)
                 }
                 .foregroundColor(.white)
-                .padding(.top, 20)
                 
                 Spacer()
             }
             .padding(.top)
         }
-        .onAppear(perform: setupAudio)
+        // FILE PICKER MODIFIER
+        .fileImporter(
+            isPresented: $isShowingPicker,
+            allowedContentTypes: [.audio, .mp3, .mpeg4Audio, .wav],
+            allowsMultipleSelection: false
+        ) { result in
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                loadAudio(from: url)
+            case .failure(let error):
+                print("Error selecting file: \(error.localizedDescription)")
+            }
+        }
         .onReceive(Timer.publish(every: 0.1, on: .main, in: .common).autoconnect()) { _ in
             updateProgress()
         }
     }
     
-    // MARK: - Logic Helpers
-    private func setupAudio() {
-        guard let url = Bundle.main.url(forResource: audioFile, withExtension: "mp3") else { return }
+    // MARK: - Logic
+    private func loadAudio(from url: URL) {
+        // 1. Gain permission to read the external file
+        guard url.startAccessingSecurityScopedResource() else { return }
+        
+        // 2. Clear old player
+        player?.stop()
+        isPlaying = false
+        
         do {
+            // 3. Initialize player with the selected URL
             player = try AVAudioPlayer(contentsOf: url)
             player?.prepareToPlay()
+            
+            // 4. Update UI labels
             totalTime = player?.duration ?? 0.0
+            selectedFileName = url.deletingPathExtension().lastPathComponent
+            selectedArtist = "Local Audio File"
+            
+            // 5. Auto-play
+            togglePlay()
+            
         } catch {
-            print("Audio error")
+            print("Failed to load audio")
         }
+        
+        // Important: Stop accessing resource when done loading (player keeps its own copy)
+        url.stopAccessingSecurityScopedResource()
     }
     
     private func togglePlay() {
+        guard player != nil else { return }
         withAnimation(.spring()) {
-            if isPlaying {
-                player?.pause()
-            } else {
-                player?.play()
-            }
+            if isPlaying { player?.pause() } 
+            else { player?.play() }
             isPlaying.toggle()
         }
     }
     
     private func updateProgress() {
-        guard let player = player, !isDragging else { return }
+        guard let player = player else { return }
         currentTime = player.currentTime
-        if currentTime >= totalTime - 0.1 { isPlaying = false }
     }
     
     private func audioTime(to time: TimeInterval) {
@@ -182,84 +192,49 @@ struct ModernMusicPlayer: View {
     }
 }
 
-// MARK: - Subviews & Styling
-
+// MARK: - Support Views (Same as before but kept for completeness)
 struct GlassButton: View {
     var icon: String
     var body: some View {
-        Image(systemName: icon)
-            .font(.system(size: 16, weight: .semibold))
+        Image(systemName: icon).padding(12)
+            .background(Circle().fill(.white.opacity(0.1)))
             .foregroundColor(.white)
-            .padding(12)
-            .background(
-                Circle()
-                    .fill(.white.opacity(0.1))
-                    .overlay(Circle().stroke(.white.opacity(0.1), lineWidth: 1))
-            )
     }
 }
 
 struct CustomSlider: View {
     @Binding var value: TimeInterval
     var range: ClosedRange<TimeInterval>
-    
     var body: some View {
         GeometryReader { geo in
             ZStack(alignment: .leading) {
+                Capsule().fill(Color.white.opacity(0.1)).frame(height: 6)
                 Capsule()
-                    .fill(Color.white.opacity(0.1))
-                    .frame(height: 6)
-                
-                Capsule()
-                    .fill(
-                        LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing)
-                    )
-                    .frame(width: CGFloat((value - range.lowerBound) / (range.upperBound - range.lowerBound)) * geo.size.width, height: 6)
-                
-                Circle()
-                    .fill(.white)
-                    .frame(width: 14, height: 14)
-                    .offset(x: CGFloat((value - range.lowerBound) / (range.upperBound - range.lowerBound)) * geo.size.width - 7)
-                    .shadow(radius: 4)
+                    .fill(LinearGradient(colors: [.purple, .blue], startPoint: .leading, endPoint: .trailing))
+                    .frame(width: CGFloat((value - range.lowerBound) / (max(1, range.upperBound - range.lowerBound))) * geo.size.width, height: 6)
             }
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { gesture in
-                        let percent = min(max(0, gesture.location.x / geo.size.width), 1)
-                        value = range.lowerBound + Double(percent) * (range.upperBound - range.lowerBound)
-                    }
-            )
-        }
-        .frame(height: 14)
+            .gesture(DragGesture(minimumDistance: 0).onChanged { gesture in
+                let percent = min(max(0, gesture.location.x / geo.size.width), 1)
+                value = range.lowerBound + Double(percent) * (range.upperBound - range.lowerBound)
+            })
+        }.frame(height: 6)
     }
 }
 
-// Prevents button flash during animation
 struct StaticButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .scaleEffect(configuration.isPressed ? 0.92 : 1.0)
-            .animation(.easeOut(duration: 0.2), value: configuration.isPressed)
+        configuration.label.scaleEffect(configuration.isPressed ? 0.9 : 1.0).animation(.easeOut, value: configuration.isPressed)
     }
 }
 
-// Helper for Hex Colors
 extension Color {
     init(hex: String) {
-        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-        var int: UInt64 = 0
-        Scanner(string: hex).scanHexInt64(&int)
-        let a, r, g, b: UInt64
-        switch hex.count {
-        case 3: (a, r, g, b) = (255, (int >> 8) * 17, (int >> 4 & 0xF) * 17, (int & 0xF) * 17)
-        case 6: (a, r, g, b) = (255, int >> 16, int >> 8 & 0xFF, int & 0xFF)
-        case 8: (a, r, g, b) = (int >> 24, int >> 16 & 0xFF, int >> 8 & 0xFF, int & 0xFF)
-        default: (a, r, g, b) = (1, 1, 1, 0)
-        }
-        self.init(.sRGB, red: Double(r) / 255, green: Double(g) / 255, blue: Double(b) / 255, opacity: Double(a) / 255)
+        let scanner = Scanner(string: hex)
+        var rgbValue: UInt64 = 0
+        scanner.scanHexInt64(&rgbValue)
+        let r = Double((rgbValue & 0xFF0000) >> 16) / 255.0
+        let g = Double((rgbValue & 0x00FF00) >> 8) / 255.0
+        let b = Double(rgbValue & 0x0000FF) / 255.0
+        self.init(red: r, green: g, blue: b)
     }
-}
-
-#Preview {
-    ModernMusicPlayer()
 }
