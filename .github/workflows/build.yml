@@ -42,4 +42,3 @@ steps:
     with:
       name: ipa
       path: build/*.ipa
-```
