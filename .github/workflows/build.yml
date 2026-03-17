@@ -1,46 +1,46 @@
-name: Build Unsigned IPA
+name: Build iOS IPA
 
 on:
-  push:
-    branches: [ "main", "master" ] # Runs every time you push code
-  workflow_dispatch: # Allows you to run it manually from the UI
+workflow_dispatch:
+push:
+branches:
+- main
 
 jobs:
-  build:
-    runs-on: macos-latest
+build:
+runs-on: macos-latest
 
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+```
+steps:
+  - name: Checkout Repository
+    uses: actions/checkout@v4
 
-      - name: Build App (Unsigned)
-        run: |
-          # 1. Build the .app bundle
-          # If your project name is different, change 'MusicPlayer' below
-          xcodebuild clean build \
-            -project MusicPlayer.xcodeproj \
-            -scheme MusicPlayer \
-            -sdk iphoneos \
-            -configuration Release \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_ENTITLEMENTS="" \
-            CODE_SIGNING_IDENTITY="" \
-            -derivedDataPath build
+  - name: Select Xcode
+    run: sudo xcode-select -s /Applications/Xcode.app
 
-      - name: Package into IPA
-        run: |
-          # 2. Create the Payload folder (required for IPA structure)
-          mkdir -p Payload
-          APP_PATH=$(find build/Build/Products/Release-iphoneos -name "*.app" | head -n 1)
-          cp -r "$APP_PATH" Payload/
-          
-          # 3. Zip it into an .ipa file
-          zip -r MusicPlayer_Unsigned.ipa Payload
+  - name: Build Archive
+    run: |
+      xcodebuild \
+      -project MusicPlayer.xcodeproj \
+      -scheme MusicPlayer \
+      -configuration Release \
+      -sdk iphoneos \
+      -archivePath $PWD/build/MusicPlayer.xcarchive \
+      CODE_SIGNING_ALLOWED=NO \
+      CODE_SIGNING_REQUIRED=NO \
+      CODE_SIGN_IDENTITY="" \
+      archive
 
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Unsigned-IPA-Build
-          path: MusicPlayer_Unsigned.ipa
-          retention-days: 5 # Keeps the file for 5 days
+  - name: Export IPA
+    run: |
+      xcodebuild -exportArchive \
+      -archivePath $PWD/build/MusicPlayer.xcarchive \
+      -exportOptionsPlist ExportOptions.plist \
+      -exportPath $PWD/build
+
+  - name: Upload IPA
+    uses: actions/upload-artifact@v4
+    with:
+      name: ipa
+      path: build/*.ipa
+```
