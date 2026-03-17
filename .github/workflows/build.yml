@@ -1,44 +1,44 @@
 name: Build iOS IPA
 
 on:
-workflow_dispatch:
-push:
-branches:
-- main
+  workflow_dispatch:
+  push:
+    branches:
+      - main
 
 jobs:
-build:
-runs-on: macos-latest
+  build:
+    runs-on: macos-latest
 
-steps:
-  - name: Checkout Repository
-    uses: actions/checkout@v4
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
 
-  - name: Select Xcode
-    run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
 
-  - name: Build Archive
-    run: |
-      xcodebuild \
-      -project MusicPlayer.xcodeproj \
-      -scheme MusicPlayer \
-      -configuration Release \
-      -sdk iphoneos \
-      -archivePath $PWD/build/MusicPlayer.xcarchive \
-      CODE_SIGNING_ALLOWED=NO \
-      CODE_SIGNING_REQUIRED=NO \
-      CODE_SIGN_IDENTITY="" \
-      archive
+      - name: Build Archive
+        run: |
+          xcodebuild \
+            -project MusicPlayer.xcodeproj \
+            -scheme MusicPlayer \
+            -configuration Release \
+            -sdk iphoneos \
+            -archivePath $PWD/build/MusicPlayer.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            archive
 
-  - name: Export IPA
-    run: |
-      xcodebuild -exportArchive \
-      -archivePath $PWD/build/MusicPlayer.xcarchive \
-      -exportOptionsPlist ExportOptions.plist \
-      -exportPath $PWD/build
+      - name: Export IPA
+        run: |
+          xcodebuild -exportArchive \
+            -archivePath $PWD/build/MusicPlayer.xcarchive \
+            -exportOptionsPlist ExportOptions.plist \
+            -exportPath $PWD/build
 
-  - name: Upload IPA
-    uses: actions/upload-artifact@v4
-    with:
-      name: ipa
-      path: build/*.ipa
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: ipa
+          path: build/*.ipa
